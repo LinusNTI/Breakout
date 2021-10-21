@@ -13,6 +13,9 @@ namespace Ball
         private Rectangle breakablesArea;
         private bool[,] breakables = { };
 
+        private long lastExecutedPhysics = 0;
+        private int updateRate = 25;
+
         #region Player Vars
         public PointF ballPos = new PointF(0, 0);
         public PointF ballVel = new PointF(1, 1.23f);
@@ -23,7 +26,7 @@ namespace Ball
 
         #region Properties
         private PointF StartPoint;
-        public PointF startPoint 
+        public PointF startPoint
         {
             get { return StartPoint; }
             set {
@@ -54,7 +57,7 @@ namespace Ball
             #region FML I hate hardcoding like this
 
             #region Create side border
-            for (int i = 0; i < gameArea.Height-1; i++)
+            for (int i = 0; i < gameArea.Height - 1; i++)
             {
                 Console.SetCursorPosition(gameArea.X, gameArea.Y + i);
                 Console.Write("#");
@@ -81,7 +84,7 @@ namespace Ball
             breakables = new bool[area.Height, area.Width];
 
             Console.SetCursorPosition(area.X, area.Y);
-            for (int y = 0; y < area.Height; y++) 
+            for (int y = 0; y < area.Height; y++)
             {
                 for (int x = 0; x < area.Width; x++)
                 {
@@ -92,23 +95,32 @@ namespace Ball
             }
         }
 
-        public bool isPointBreakable(PointF ballPos) 
+        public bool isPointBreakable(PointF ballPos)
         {
-            return false;
-            if (ballPos.X < breakablesArea.X ||
-                ballPos.X > breakablesArea.X + breakablesArea.Width)
+            if (Math.Floor(ballPos.X) < breakablesArea.X ||
+                Math.Floor(ballPos.X) > breakablesArea.X + breakablesArea.Width)
+            {
                 return false;
-            if (ballPos.Y < breakablesArea.Y ||
-                ballPos.Y > breakablesArea.Y + breakablesArea.Height)
+            }
+                
+            if (Math.Floor(ballPos.Y) < breakablesArea.Y ||
+                Math.Floor(ballPos.Y) > breakablesArea.Y + breakablesArea.Height)
+            {
                 return false;
-            int Y = (int)Math.Floor(ballPos.Y); //Fuck
-            int X = (int)Math.Floor(ballPos.X); //My
-            return breakables[Y-2, X-4]; //Life
+            }
+
+            //Convert to relative positions
+            int X = (int)Math.Floor(ballPos.X) - breakablesArea.X;
+            int Y = (int)Math.Floor(ballPos.Y) - breakablesArea.Y;
+
+            //Return at the relative position of the ball
+            return breakables[Y, X];
         }
 
         public bool BreakBlock(Point blockPos)
         {
-            breakables[blockPos.Y - 2, blockPos.X - 4] = false;
+
+            breakables[blockPos.Y - breakablesArea.Y, blockPos.X - breakablesArea.X] = false;
             Console.SetCursorPosition(blockPos.X, blockPos.Y);
             Console.Write(" ");
             return true;
@@ -118,9 +130,8 @@ namespace Ball
         #region Player methods
         private void Physics()
         {
-            #region Compute physics
             Point endPoint = new Point(gameArea.Width + gameArea.X,
-                                        gameArea.Height + gameArea.Y);
+                                        gameArea.Height + gameArea.Y - 1);
 
             //Reverse velocity if the ball is about to hit a wall/border
             if (Math.Floor(ballPos.X + ballVel.X) >= endPoint.X - 1 ||
@@ -128,8 +139,16 @@ namespace Ball
             {
                 ballVel.X *= -1;
             }
-            if (Math.Floor(ballPos.Y + ballVel.Y) >= endPoint.Y ||
-                Math.Floor(ballPos.Y + ballVel.Y) <= gameArea.Y)
+            if (Math.Floor(ballPos.Y + ballVel.Y) >= endPoint.Y)
+            {
+                if (Math.Abs((ballPos.X + ballVel.X) - oldPlaneX) * -1 > 2)
+                {
+                    //Die
+                    lastExecutedPhysics = long.MaxValue;
+                }
+                ballVel.Y *= -1;
+            }
+            if (Math.Floor(ballPos.Y + ballVel.Y) >= endPoint.Y)
             {
                 ballVel.Y *= -1;
             }
@@ -142,7 +161,6 @@ namespace Ball
 
             oldBallPos = ballPos;
             ballPos = new PointF(ballPos.X + ballVel.X, ballPos.Y + ballVel.Y);
-            #endregion
         }
 
         private void UpdateFlipper(int x)
@@ -155,14 +173,24 @@ namespace Ball
             oldPlaneX = x;
         }
 
-        private void Render()
+        public void MoveFlipper(int x)
+        {
+            if (oldPlaneX - x + 2 < gameArea.X ||
+                oldPlaneX - x + 2 > gameArea.X + gameArea.Width)
+            {
+                return;
+            }
+            UpdateFlipper(oldPlaneX + x);
+        }
+
+        public void Render()
         {
             Console.SetCursorPosition((int)Math.Floor(oldBallPos.X), (int)Math.Floor(oldBallPos.Y));
             Console.Write(" ");
             Console.SetCursorPosition((int)Math.Floor(ballPos.X), (int)Math.Floor(ballPos.Y));
             Console.Write("@");
 
-            UpdateFlipper((int)Math.Floor(ballPos.X));
+            //UpdateFlipper((int)Math.Floor(ballPos.X));
 
             Console.SetCursorPosition(0, 0);
         }
@@ -171,19 +199,20 @@ namespace Ball
         #region General methods
 
         #region Constructors
-        public Player(Rectangle arenaSize, Rectangle relativeBreakablesArea, PointF startPos, PointF startVel, int planeStartX) //Define default constructor for class
+        public Player(Rectangle arenaSize, Rectangle relativeBreakablesArea, PointF startPos, PointF startVel, int planeStartX, int updateRate) //Define default constructor for class
         {
             gameArea = arenaSize;
             startPoint = new PointF(startPos.X + arenaSize.X, startPos.Y + arenaSize.Y);
             ballVel = startVel;
             oldPlaneX = planeStartX + arenaSize.X;
+            this.updateRate = updateRate;
 
             Start();
-            CreateBreakables( new Rectangle(
+            CreateBreakables(new Rectangle(
                     relativeBreakablesArea.X + arenaSize.X + 1,
                     relativeBreakablesArea.Y + arenaSize.Y + 1,
-                    Math.Clamp(relativeBreakablesArea.Width, 1, arenaSize.Width-1),
-                    Math.Clamp(relativeBreakablesArea.Height, 1, arenaSize.Height-1)
+                    Math.Clamp(relativeBreakablesArea.Width, 1, arenaSize.Width - 2),
+                    Math.Clamp(relativeBreakablesArea.Height, 1, arenaSize.Height - 2)
                 )
             );
         }
@@ -191,7 +220,12 @@ namespace Ball
 
         public void Update()
         {
-            Physics();
+            if (lastExecutedPhysics + updateRate <= Environment.TickCount64)
+            {
+                Physics();
+                lastExecutedPhysics = Environment.TickCount64 + updateRate;
+            }
+                
             Render();
         }
 
