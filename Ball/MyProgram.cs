@@ -16,26 +16,36 @@ namespace Ball
     class MyProgram
     {
         public List<Player> _players = new List<Player>();
-        public int updateRate = 100;
+        public int updateRate = 500;
 
         public PlayerControls[] _playerControls = {
             new PlayerControls() { left = ConsoleKey.A, right = ConsoleKey.D },
-            new PlayerControls() { left = ConsoleKey.LeftArrow, right = ConsoleKey.RightArrow }
+            new PlayerControls() { left = ConsoleKey.LeftArrow, right = ConsoleKey.RightArrow },
+            new PlayerControls() { left = ConsoleKey.Z, right = ConsoleKey.X }
         };
 
         public void Run()
         {
             _players.Add(new Player(
-                new Rectangle(1, 1, 29, 9),  //Arena size
+                new Rectangle(1, 1, 29, 14), //Arena size
                 new Rectangle(0, 0, 99, 3),  //Breakable area (RELATIVE TO ARENA SIZE)
                 new PointF(15, 5),           //Start position
-                new PointF(1f, 1.25f),       //Ball velocity
+                new PointF(1f, -1.25f),      //Ball velocity
                 5,                           //Plane start position
                 updateRate                   //Update rate for physics
             ));
 
             _players.Add(new Player(
-                new Rectangle(34, 1, 29, 9), //Arena size
+                new Rectangle(34, 1, 29, 14),//Arena size
+                new Rectangle(0, 0, 99, 3),  //Breakable area (RELATIVE TO ARENA SIZE)
+                new PointF(15, 5),           //Start position
+                new PointF(-2f, -1.5f),      //Ball velocity
+                5,                           //Plane start position
+                updateRate                   //Update rate for physics
+            ));
+
+            _players.Add(new Player(
+                new Rectangle(68, 1, 29, 14),//Arena size
                 new Rectangle(0, 0, 99, 3),  //Breakable area (RELATIVE TO ARENA SIZE)
                 new PointF(15, 5),           //Start position
                 new PointF(-2f, -1.5f),      //Ball velocity
@@ -46,11 +56,11 @@ namespace Ball
             bool runGame = true;
             while (runGame)
             {
-                for (int i = 0; i < _players.Count; i++)
+                if (Console.KeyAvailable)
                 {
-                    if (Console.KeyAvailable)
+                    ConsoleKey key = Console.ReadKey(true).Key;
+                    for (int i = 0; i < _players.Count; i++)
                     {
-                        ConsoleKey key = Console.ReadKey(true).Key;
                         if (_playerControls[i].left == key)
                         {
                             _players[i].MoveFlipper(-1);
@@ -60,6 +70,10 @@ namespace Ball
                             _players[i].MoveFlipper(1);
                         }
                     }
+
+                }
+                for (int i = 0; i < _players.Count; i++)
+                {
                     _players[i].Update();
                 }
                 Thread.Sleep(1);

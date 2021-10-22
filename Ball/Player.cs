@@ -5,16 +5,24 @@ using System.Text;
 
 namespace Ball
 {
+    struct Brick
+    {
+        public short x, y; //Use a short to conserve memory (like it is an issue to begin with)
+        public bool isBroken;
+    }
+
     class Player
     {
         #region Vars
         public Rectangle gameArea;
 
         private Rectangle breakablesArea;
-        private bool[,] breakables = { };
+        private Brick[] breakables = { };
 
         private long lastExecutedPhysics = 0;
         private int updateRate = 25;
+
+        public bool isDead = false;
 
         #region Player Vars
         public PointF ballPos = new PointF(0, 0);
@@ -81,7 +89,7 @@ namespace Ball
         {
             breakablesArea = area;
 
-            breakables = new bool[area.Height, area.Width];
+            breakables = new Brick[area.Height * area.Width];
 
             Console.SetCursorPosition(area.X, area.Y);
             for (int y = 0; y < area.Height; y++)
@@ -89,10 +97,22 @@ namespace Ball
                 for (int x = 0; x < area.Width; x++)
                 {
                     Console.Write("X");
-                    breakables[y, x] = true;
+                    breakables[y * x] = new Brick() { x = (short)(x + area.X), y = (short)(y + area.Y), isBroken = false };
                 }
                 Console.SetCursorPosition(area.X, area.Y + y);
             }
+        }
+
+        private Brick? FindBrick(Point pos)
+        {
+            for (int i = 0; i < breakables.Length; i++)
+            {
+                if (breakables[i].x == pos.X && breakables[i].y == pos.Y)
+                {
+                    return breakables[i];
+                }
+            }
+            return null;
         }
 
         public bool isPointBreakable(PointF ballPos)
@@ -109,18 +129,34 @@ namespace Ball
                 return false;
             }
 
-            //Convert to relative positions
-            int X = (int)Math.Floor(ballPos.X) - breakablesArea.X;
-            int Y = (int)Math.Floor(ballPos.Y) - breakablesArea.Y;
+            Brick? foundBrick = FindBrick(new Point((int)Math.Floor(ballPos.X), (int)Math.Floor(ballPos.Y)));
+
+            if (foundBrick == null)
+            {
+                return false;
+            }
 
             //Return at the relative position of the ball
-            return breakables[Y, X];
+            return ((Brick)foundBrick).isBroken;
         }
 
         public bool BreakBlock(Point blockPos)
         {
+            bool foundBlock = false;
+            for (int i = 0; i < breakables.Length; i++)
+            {
+                if (breakables[i].x == blockPos.X && breakables[i].y == blockPos.Y)
+                {
+                    breakables[i].isBroken = true;
+                    foundBlock = true;
+                }
+            }
 
-            breakables[blockPos.Y - breakablesArea.Y, blockPos.X - breakablesArea.X] = false;
+            if (!foundBlock)
+            {
+                return false;
+            }
+            
             Console.SetCursorPosition(blockPos.X, blockPos.Y);
             Console.Write(" ");
             return true;
@@ -141,14 +177,15 @@ namespace Ball
             }
             if (Math.Floor(ballPos.Y + ballVel.Y) >= endPoint.Y)
             {
-                if (Math.Abs((ballPos.X + ballVel.X) - oldPlaneX) * -1 > 2)
+                var s = Math.Abs((ballPos.X + ballVel.X) - oldPlaneX);
+                if (s > 2)
                 {
                     //Die
-                    lastExecutedPhysics = long.MaxValue;
+                    isDead = true;
                 }
                 ballVel.Y *= -1;
             }
-            if (Math.Floor(ballPos.Y + ballVel.Y) >= endPoint.Y)
+            if (Math.Floor(ballPos.Y + ballVel.Y) <= gameArea.Y)
             {
                 ballVel.Y *= -1;
             }
@@ -220,13 +257,16 @@ namespace Ball
 
         public void Update()
         {
-            if (lastExecutedPhysics + updateRate <= Environment.TickCount64)
+            if (lastExecutedPhysics + updateRate <= Environment.TickCount64 && !isDead)
             {
                 Physics();
                 lastExecutedPhysics = Environment.TickCount64 + updateRate;
             }
                 
-            Render();
+            if (!isDead)
+            {
+                Render();
+            }
         }
 
         public void Start()
@@ -235,6 +275,7 @@ namespace Ball
 
             CreateBorder();
             ValidateAndCorrect();
+            UpdateFlipper(oldPlaneX);
         }
         #endregion
     }
