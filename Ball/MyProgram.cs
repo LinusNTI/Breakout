@@ -16,25 +16,17 @@ namespace Ball
     class MyProgram
     {
         public List<Player> _players = new List<Player>();
-        public int updateRate = 500;
+        public int updateRate = 200;
 
         public PlayerControls[] _playerControls = {
             new PlayerControls() { left = ConsoleKey.A, right = ConsoleKey.D },
             new PlayerControls() { left = ConsoleKey.LeftArrow, right = ConsoleKey.RightArrow },
-            new PlayerControls() { left = ConsoleKey.Z, right = ConsoleKey.X }
+            new PlayerControls() { left = ConsoleKey.Z, right = ConsoleKey.X },
+            new PlayerControls() { left = ConsoleKey.C, right = ConsoleKey.V }
         };
 
         public void Run()
         {
-            _players.Add(new Player(
-                new Rectangle(1, 1, 29, 14), //Arena size
-                new Rectangle(0, 0, 99, 3),  //Breakable area (RELATIVE TO ARENA SIZE)
-                new PointF(15, 5),           //Start position
-                new PointF(1f, -1.25f),      //Ball velocity
-                5,                           //Plane start position
-                updateRate                   //Update rate for physics
-            ));
-
             _players.Add(new Player(
                 new Rectangle(34, 1, 29, 14),//Arena size
                 new Rectangle(0, 0, 99, 3),  //Breakable area (RELATIVE TO ARENA SIZE)

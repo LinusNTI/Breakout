@@ -22,6 +22,8 @@ namespace Ball
         private long lastExecutedPhysics = 0;
         private int updateRate = 25;
 
+        private ConsoleColor deathColor = ConsoleColor.Red;
+
         public bool isDead = false;
 
         #region Player Vars
@@ -181,6 +183,18 @@ namespace Ball
                 if (s > 2)
                 {
                     //Die
+                    ConsoleColor oldClr = Console.ForegroundColor;
+                    Console.ForegroundColor = deathColor;
+                    Console.SetCursorPosition(gameArea.X, gameArea.Y);
+                    for (int y = 0; y < gameArea.Height + 1; y++)
+                    {
+                        for (int x = 0; x < gameArea.Width; x++)
+                        {
+                            Console.Write("X");
+                        }
+                        Console.SetCursorPosition(gameArea.X, gameArea.Y + y);
+                    }
+                    Console.ForegroundColor = oldClr;
                     isDead = true;
                 }
                 ballVel.Y *= -1;
@@ -212,6 +226,8 @@ namespace Ball
 
         public void MoveFlipper(int x)
         {
+            if (isDead)
+                return;
             if (oldPlaneX - x + 2 < gameArea.X ||
                 oldPlaneX - x + 2 > gameArea.X + gameArea.Width)
             {
